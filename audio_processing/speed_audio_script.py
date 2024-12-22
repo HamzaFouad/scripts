@@ -30,10 +30,18 @@ def extract_speed_from_parent(parent_dir_name, default_speed=1.3):
     except ValueError:
         return default_speed
 
-def process_directory_recursive(input_dir, speed=1.3):
+def process_directory_recursive(input_dir, speed=1.3, base_output_dir=None):
     """Recursively processes all audio files in a directory and its subdirectories."""
     input_dir = Path(input_dir).resolve()
-    output_dir = input_dir.parent / f"{input_dir.name}_speedup_{speed}"
+    
+    # Create base output directory if not provided
+    if base_output_dir is None:
+        base_output_dir = input_dir.parent / "speedup"
+    base_output_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Adjust output directory path
+    relative_path = input_dir.relative_to(input_dir.parent)
+    output_dir = base_output_dir / relative_path
     output_dir.mkdir(parents=True, exist_ok=True)
 
     audio_files = list(input_dir.glob("*.mp3")) + list(input_dir.glob("*.wav"))
@@ -54,12 +62,11 @@ def process_directory_recursive(input_dir, speed=1.3):
     # Process nested directories
     for sub_dir in input_dir.iterdir():
         if sub_dir.is_dir():
-            process_directory_recursive(sub_dir, speed)
+            process_directory_recursive(sub_dir, speed, base_output_dir)
 
 def main():
     """Main function to process all subdirectories."""
-    # input_directory = input("Enter the path of the main directory containing subdirectories: ").strip()
-    input_directory = ""
+    input_directory = input("Enter the path of the main directory containing subdirectories: ").strip()
     if not input_directory:
         print("Error: No directory entered.")
         return
