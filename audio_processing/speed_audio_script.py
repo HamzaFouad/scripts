@@ -44,7 +44,10 @@ def process_directory_recursive(input_dir, speed=1.3, base_output_dir=None):
     output_dir = base_output_dir / relative_path
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    audio_files = list(input_dir.glob("*.mp3")) + list(input_dir.glob("*.wav"))
+    # Find audio files with case-insensitive matching for .mp3 and .wav
+    audio_files = list(input_dir.glob("*.mp3")) + list(input_dir.glob("*.MP3")) + \
+                  list(input_dir.glob("*.wav")) + list(input_dir.glob("*.WAV"))
+    
     if audio_files:
         print(f"Found {len(audio_files)} audio files in {input_dir}. Processing...")
         # Process files concurrently
