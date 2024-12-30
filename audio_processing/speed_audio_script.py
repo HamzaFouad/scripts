@@ -30,13 +30,18 @@ def extract_speed_from_parent(parent_dir_name, default_speed=1.3):
     except ValueError:
         return default_speed
 
-def process_directory_recursive(input_dir, speed=1.3, base_output_dir=None):
+def process_directory_recursive(input_dir, speed=1.3, base_output_dir=None, excluded_dirs=None):
     """Recursively processes all audio files in a directory and its subdirectories."""
     input_dir = Path(input_dir).resolve()
     
     # Create base output directory if not provided
     if base_output_dir is None:
         base_output_dir = input_dir.parent / "speedup"
+
+    # Skip processing the output directory itself
+    if excluded_dirs and input_dir in excluded_dirs:
+        return
+    
     base_output_dir.mkdir(parents=True, exist_ok=True)
     
     # Adjust output directory path
@@ -44,9 +49,8 @@ def process_directory_recursive(input_dir, speed=1.3, base_output_dir=None):
     output_dir = base_output_dir / relative_path
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Find audio files with case-insensitive matching for .mp3 and .wav
-    audio_files = list(input_dir.glob("*.mp3")) + list(input_dir.glob("*.MP3")) + \
-                  list(input_dir.glob("*.wav")) + list(input_dir.glob("*.WAV"))
+    # Find audio files with case-insensitive matching for .mp3
+    audio_files = list(input_dir.glob("*.mp3")) + list(input_dir.glob("*.MP3"))
     
     if audio_files:
         print(f"Found {len(audio_files)} audio files in {input_dir}. Processing...")
@@ -65,7 +69,11 @@ def process_directory_recursive(input_dir, speed=1.3, base_output_dir=None):
     # Process nested directories
     for sub_dir in input_dir.iterdir():
         if sub_dir.is_dir():
-            process_directory_recursive(sub_dir, speed, base_output_dir)
+            process_directory_recursive(sub_dir, speed, base_output_dir, excluded_dirs)
+
+def get_valid_directories(input_dir):
+    """Returns a set of valid subdirectories to process."""
+    return {sub_dir.resolve() for sub_dir in Path(input_dir).iterdir() if sub_dir.is_dir()}
 
 def main():
     """Main function to process all subdirectories."""
@@ -79,12 +87,19 @@ def main():
         print(f"Error: Directory '{input_path}' does not exist or is not a directory.")
         return
 
-    # Process all top-level subdirectories
-    for sub_dir in input_path.iterdir():
-        if sub_dir.is_dir():
-            speed = extract_speed_from_parent(sub_dir.name)
-            print(f"Processing directory '{sub_dir}' with speed factor: {speed}")
-            process_directory_recursive(sub_dir, speed)
+    # Exclude the output directory
+    excluded_dir = input_path / "speedup"
+    excluded_dir.mkdir(exist_ok=True)
+    
+    # Get valid directories
+    valid_directories = get_valid_directories(input_path)
+    valid_directories.discard(excluded_dir)  # Exclude the output directory
+
+    # Process each valid subdirectory
+    for sub_dir in valid_directories:
+        speed = extract_speed_from_parent(sub_dir.name)
+        print(f"Processing directory '{sub_dir}' with speed factor: {speed}")
+        process_directory_recursive(sub_dir, speed, base_output_dir=excluded_dir, excluded_dirs={excluded_dir})
 
 if __name__ == "__main__":
     main()
