@@ -1,6 +1,7 @@
 import os
 import shutil
 import re
+import csv
 
 def ensure_directory_exists(directory):
     """
@@ -27,7 +28,7 @@ def get_directory_prefix(directory_name):
 
 def clean_filename(filename):
     """
-    Cleans a filename by removing non-numeric characters, except underscores.
+    Cleans a filename by removing characters that are not English letters, numbers, or special characters.
 
     Args:
         filename (str): The original filename without extension.
@@ -35,7 +36,7 @@ def clean_filename(filename):
     Returns:
         str: The cleaned filename.
     """
-    return re.sub(r"[^\d_]", "", filename)
+    return re.sub(r"[^a-zA-Z0-9._-]", "", filename)
 
 def handle_file_name_conflict(destination_path):
     """
@@ -76,20 +77,53 @@ def collect_audios(source_parent_dir, destination_dir):
     """
     Collects all .mp3 files from all subdirectories of a given parent directory,
     modifies filenames to include a prefix based on the directory name, and copies 
-    them into a single destination directory.
+    them into a single destination directory. Additionally, writes a CSV file
+    with the starting and ending numbers for each directory.
 
     Args:
         source_parent_dir (str): Path to the parent directory containing subdirectories with audio files.
         destination_dir (str): Path to the directory where all audio files will be copied.
     """
     ensure_directory_exists(destination_dir)
+    csv_data = []
+    
     for root, _, files in os.walk(source_parent_dir):
         dir_name = os.path.basename(root)
         prefix = get_directory_prefix(dir_name)
+        
+        # Track file numbering within each directory
+        laptop_ordering_start = None
+        laptop_ordering_end = None
+        jac_ordering_counter = 1
+
         for file in files:
             if file.lower().endswith(".mp3"):  # Check only .mp3 files (case insensitive)
                 source_path = os.path.join(root, file)
+                file_name_without_ext, _ = os.path.splitext(file)
+                
+                if laptop_ordering_start is None:
+                    laptop_ordering_start = int(clean_filename(file_name_without_ext) or "0")
+
+                laptop_ordering_end = int(clean_filename(file_name_without_ext) or "0")
                 copy_audio_file(source_path, destination_dir, prefix)
+                jac_ordering_counter += 1
+
+        if laptop_ordering_start is not None:
+            jac_ordering_start = 1
+            jac_ordering_end = jac_ordering_counter - 1
+            csv_data.append([
+                dir_name,
+                f"{laptop_ordering_start:04}-{laptop_ordering_end:04}",
+                f"{jac_ordering_start:04}-{jac_ordering_end:04}"
+            ])
+
+    # Write CSV data
+    csv_file_path = os.path.join(destination_dir, "directory_summary.csv")
+    with open(csv_file_path, mode="w", newline="", encoding="utf-8") as csv_file:
+        writer = csv.writer(csv_file)
+        writer.writerow(["directory_name", "laptop_ordering", "jac_ordering"])
+        writer.writerows(csv_data)
+    print(f"CSV summary written to {csv_file_path}")
 
 # Example usage
 source_directory = input("Enter the path of the source parent directory: ").strip()
