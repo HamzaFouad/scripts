@@ -23,8 +23,9 @@ def get_directory_prefix(directory_name):
     Returns:
         str: The prefix (e.g., "12_") or "999_" if no digits are found.
     """
-    match = re.match(r"(\d{2})", directory_name)
-    return f"{match.group(1)}_" if match else "999_"
+    if '__' in directory_name:
+        return directory_name.split('__')[0]
+    return "unknown"
 
 def clean_filename(filename):
     """
@@ -55,7 +56,7 @@ def handle_file_name_conflict(destination_path):
         counter += 1
     return destination_path
 
-def copy_audio_file(source_path, destination_dir, prefix):
+def copy_audio_file(source_path, destination_dir, prefix, counter):
     """
     Copies an audio file to the destination directory with a modified name.
 
@@ -66,14 +67,23 @@ def copy_audio_file(source_path, destination_dir, prefix):
     """
     file_name = os.path.basename(source_path)
     file_name_without_ext, ext = os.path.splitext(file_name)
-    clean_name = clean_filename(file_name_without_ext)
-    new_name = f"{prefix}{clean_name}{ext}"
+    # clean_name = clean_filename(file_name_without_ext)
+    # new_name = f"{counter}_{prefix}_{clean_name}{ext}"
+    new_name = f"{counter}{ext}"
     destination_path = os.path.join(destination_dir, new_name)
     destination_path = handle_file_name_conflict(destination_path)
     shutil.copy2(source_path, destination_path)
     print(f"Copied {source_path} to {destination_path}")
 
-def collect_audios(source_parent_dir, destination_dir):
+def add_splitter_audio(destination_dir, splitter_audio_path, counter):
+    splitter_file_name = os.path.basename(splitter_audio_path)
+    new_name = f"{counter}_splitter_{splitter_file_name}"
+    destination_path = os.path.join(destination_dir, new_name)
+    shutil.copy2(splitter_audio_path, destination_path)
+    print(f"Added splitter audio: {splitter_audio_path} as {destination_path}")
+    return counter + 1
+
+def collect_audios(source_parent_dir, destination_dir, splitter_audio_path, start_counter=1111):
     """
     Collects all .mp3 files from all subdirectories of a given parent directory,
     modifies filenames to include a prefix based on the directory name, and copies 
@@ -86,47 +96,61 @@ def collect_audios(source_parent_dir, destination_dir):
     """
     ensure_directory_exists(destination_dir)
     csv_data = []
+    counter = start_counter
     
-    for root, _, files in os.walk(source_parent_dir):
+    # Sort directories before processing
+    subdirs = sorted([os.path.join(source_parent_dir, d) for d in os.listdir(source_parent_dir) if os.path.isdir(os.path.join(source_parent_dir, d))])
+
+    for root in subdirs:
         dir_name = os.path.basename(root)
         prefix = get_directory_prefix(dir_name)
-        
-        # Track file numbering within each directory
-        laptop_ordering_start = None
-        laptop_ordering_end = None
+
+        start_laptop_order = None
+        end_laptop_order = None
         jac_ordering_counter = 1
 
-        for file in files:
-            if file.lower().endswith(".mp3"):  # Check only .mp3 files (case insensitive)
-                source_path = os.path.join(root, file)
-                file_name_without_ext, _ = os.path.splitext(file)
-                
-                if laptop_ordering_start is None:
-                    laptop_ordering_start = int(clean_filename(file_name_without_ext) or "0")
+        files = sorted([f for f in os.listdir(root) if os.path.isfile(os.path.join(root, f))])
 
-                laptop_ordering_end = int(clean_filename(file_name_without_ext) or "0")
-                copy_audio_file(source_path, destination_dir, prefix)
+        for file in sorted(files):
+            if file.lower().endswith(".mp3"):
+                source_path = os.path.join(root, file)
+                if start_laptop_order is None:
+                    start_laptop_order = counter
+                end_laptop_order = counter
+
+                copy_audio_file(source_path, destination_dir, prefix, counter)
+                counter += 1
                 jac_ordering_counter += 1
 
-        if laptop_ordering_start is not None:
+        if start_laptop_order is not None:
             jac_ordering_start = 1
-            jac_ordering_end = jac_ordering_counter - 1
+            jac_ordering_end = jac_ordering_counter
             csv_data.append([
                 dir_name,
-                f"{laptop_ordering_start:04}-{laptop_ordering_end:04}",
-                f"{jac_ordering_start:04}-{jac_ordering_end:04}"
+                start_laptop_order,
+                end_laptop_order,
+                jac_ordering_start,
+                jac_ordering_end,
             ])
+
+            # Add splitter audio after processing the current playlist
+            counter = add_splitter_audio(destination_dir, splitter_audio_path, counter)
 
     # Write CSV data
     csv_file_path = os.path.join(destination_dir, "directory_summary.csv")
     with open(csv_file_path, mode="w", newline="", encoding="utf-8") as csv_file:
         writer = csv.writer(csv_file)
-        writer.writerow(["directory_name", "laptop_ordering", "jac_ordering"])
+        writer.writerow(["directoryname", "start_laptop_order", "end_laptop_order", "start_jac_order", "end_jac_order"])
         writer.writerows(csv_data)
     print(f"CSV summary written to {csv_file_path}")
 
 # Example usage
-source_directory = input("Enter the path of the source parent directory: ").strip()
-destination_directory = input("Enter the path of the destination directory: ").strip()
+# source_directory = input("Enter the path of the source parent directory: ").strip()
+# destination_directory = input("Enter the path of the destination directory: ").strip()
+# splitter_audio_path = input("Enter the path of the splitter audio file: ").strip()
 
-collect_audios(source_directory, destination_directory)
+source_directory = "/Users/hamzafouad/my_workspace/personal/audios/card_01_03_2025"
+destination_directory = "/Users/hamzafouad/my_workspace/personal/audios/memory_card_01_03_2025"
+splitter_audio_path = "/Users/hamzafouad/my_workspace/personal/audios/original/seek_afterlife.mp3"
+
+collect_audios(source_directory, destination_directory, splitter_audio_path, start_counter=1111)
