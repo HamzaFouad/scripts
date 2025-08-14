@@ -97,6 +97,8 @@ def collect_audios(source_parent_dir, destination_dir, splitter_audio_path, star
     ensure_directory_exists(destination_dir)
     csv_data = []
     counter = start_counter
+    current_jac_order_val = 1
+
     
     # Sort directories before processing
     subdirs = sorted([os.path.join(source_parent_dir, d) for d in os.listdir(source_parent_dir) if os.path.isdir(os.path.join(source_parent_dir, d))])
@@ -107,7 +109,7 @@ def collect_audios(source_parent_dir, destination_dir, splitter_audio_path, star
 
         start_laptop_order = None
         end_laptop_order = None
-        jac_ordering_counter = 1
+        dir_specific_start_jac_order = None # To store the JAC start for this directory's files
 
         files = sorted([f for f in os.listdir(root) if os.path.isfile(os.path.join(root, f))])
 
@@ -116,21 +118,22 @@ def collect_audios(source_parent_dir, destination_dir, splitter_audio_path, star
                 source_path = os.path.join(root, file)
                 if start_laptop_order is None:
                     start_laptop_order = counter
+                    dir_specific_start_jac_order = current_jac_order_val
+
                 end_laptop_order = counter
 
                 copy_audio_file(source_path, destination_dir, prefix, counter)
                 counter += 1
-                jac_ordering_counter += 1
+                current_jac_order_val += 1
 
         if start_laptop_order is not None:
-            jac_ordering_start = 1
-            jac_ordering_end = jac_ordering_counter
+            dir_specific_end_jac_order = current_jac_order_val - 1
             csv_data.append([
                 dir_name,
                 start_laptop_order,
                 end_laptop_order,
-                jac_ordering_start,
-                jac_ordering_end,
+                dir_specific_start_jac_order,
+                dir_specific_end_jac_order,
             ])
 
             # Add splitter audio after processing the current playlist
@@ -149,8 +152,8 @@ def collect_audios(source_parent_dir, destination_dir, splitter_audio_path, star
 # destination_directory = input("Enter the path of the destination directory: ").strip()
 # splitter_audio_path = input("Enter the path of the splitter audio file: ").strip()
 
-source_directory = "/Users/hamzafouad/my_workspace/personal/audios/card_01_03_2025"
-destination_directory = "/Users/hamzafouad/my_workspace/personal/audios/memory_card_01_03_2025"
+source_directory = "/Users/hamzafouad/my_workspace/personal/audios/18_05_2025/all"
+destination_directory = "/Users/hamzafouad/my_workspace/personal/audios/18_05_2025/final"
 splitter_audio_path = "/Users/hamzafouad/my_workspace/personal/audios/original/seek_afterlife.mp3"
 
 collect_audios(source_directory, destination_directory, splitter_audio_path, start_counter=1111)
