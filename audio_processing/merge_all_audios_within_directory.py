@@ -81,8 +81,11 @@ def merge_audios_with_silence(parent_directory, splitter_audio_path=None):
                 "-f", "concat",
                 "-safe", "0",
                 "-i", concat_file_path,
+                "-map", "0:a:0",  # Map only the first audio stream (ignore video if present)
                 "-ar", splitter_sample_rate,
                 "-ac", "2",  # Stereo audio for better quality
+                "-sample_fmt", "s16p",  # Convert to signed 16-bit planar format
+                "-c:a", "libmp3lame",  # Explicitly use libmp3lame encoder
                 "-b:a", "192k",  # Adjust bit rate for better quality
                 "-y", output_file
             ], check=True)
@@ -95,6 +98,6 @@ def merge_audios_with_silence(parent_directory, splitter_audio_path=None):
 # Example usage
 # parent_directory = input("Enter the directory path: ")
 # splitter_audio_path = input("Enter the path of the audio file to split (or leave blank for silence): ")
-parent_directory = "/Users/hamzafouad/my_workspace/personal/audios/original/dangerous/wrapper"
+parent_directory = "/Users/hamzafouad/my_workspace/personal/private"
 splitter_audio_path = None  # Pass a valid path or None for silence
 merge_audios_with_silence(parent_directory, splitter_audio_path)
