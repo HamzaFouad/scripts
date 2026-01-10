@@ -76,9 +76,10 @@ def copy_audio_file(source_path, destination_dir, prefix, counter):
     print(f"Copied {source_path} to {destination_path}")
 
 def add_splitter_audio(destination_dir, splitter_audio_path, counter):
-    splitter_file_name = os.path.basename(splitter_audio_path)
-    new_name = f"{counter}_splitter_{splitter_file_name}"
+    _, ext = os.path.splitext(splitter_audio_path)
+    new_name = f"{counter}{ext}"
     destination_path = os.path.join(destination_dir, new_name)
+    destination_path = handle_file_name_conflict(destination_path)
     shutil.copy2(splitter_audio_path, destination_path)
     print(f"Added splitter audio: {splitter_audio_path} as {destination_path}")
     return counter + 1
@@ -98,6 +99,7 @@ def collect_audios(source_parent_dir, destination_dir, splitter_audio_path, star
     csv_data = []
     counter = start_counter
     current_jac_order_val = 1
+    splitter_numbers = []
 
     
     # Sort directories before processing
@@ -137,14 +139,20 @@ def collect_audios(source_parent_dir, destination_dir, splitter_audio_path, star
             ])
 
             # Add splitter audio after processing the current playlist
+            splitter_numbers.append(counter)
             counter = add_splitter_audio(destination_dir, splitter_audio_path, counter)
 
     # Write CSV data
-    csv_file_path = os.path.join(destination_dir, "directory_summary.csv")
+    destination_dir_name = os.path.basename(destination_dir)
+    csv_filename = f"{destination_dir_name}_summary.csv"
+    csv_file_path = os.path.join(source_parent_dir, csv_filename)
     with open(csv_file_path, mode="w", newline="", encoding="utf-8") as csv_file:
         writer = csv.writer(csv_file)
         writer.writerow(["directoryname", "start_laptop_order", "end_laptop_order", "start_jac_order", "end_jac_order"])
         writer.writerows(csv_data)
+        # Add splitter numbers at the end
+        writer.writerow([])  # Empty row for spacing
+        writer.writerow(["Splitter Numbers"] + splitter_numbers)
     print(f"CSV summary written to {csv_file_path}")
 
 # Example usage
@@ -152,8 +160,8 @@ def collect_audios(source_parent_dir, destination_dir, splitter_audio_path, star
 # destination_directory = input("Enter the path of the destination directory: ").strip()
 # splitter_audio_path = input("Enter the path of the splitter audio file: ").strip()
 
-source_directory = "/Users/hamzafouad/my_workspace/personal/audios/18_05_2025/all"
-destination_directory = "/Users/hamzafouad/my_workspace/personal/audios/18_05_2025/final"
-splitter_audio_path = "/Users/hamzafouad/my_workspace/personal/audios/original/seek_afterlife.mp3"
+source_directory = "/Users/hamzafouad/my_workspace/personal/audios/hoz_01_01"
+destination_directory = "/Users/hamzafouad/my_workspace/personal/audios/hoz_01_01_memory_finalized"
+splitter_audio_path = "/Users/hamzafouad/my_workspace/personal/patience_reward_ayah.mp3"
 
 collect_audios(source_directory, destination_directory, splitter_audio_path, start_counter=1111)
