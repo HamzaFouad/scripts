@@ -2,6 +2,15 @@ import os
 import shutil
 import re
 import csv
+import logging
+from notifications import send_telegram_notification
+
+# Configure logging
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+logger = logging.getLogger(__name__)
 
 def ensure_directory_exists(directory):
     """
@@ -154,14 +163,46 @@ def collect_audios(source_parent_dir, destination_dir, splitter_audio_path, star
         writer.writerow([])  # Empty row for spacing
         writer.writerow(["Splitter Numbers"] + splitter_numbers)
     print(f"CSV summary written to {csv_file_path}")
+    return csv_file_path
 
 # Example usage
 # source_directory = input("Enter the path of the source parent directory: ").strip()
 # destination_directory = input("Enter the path of the destination directory: ").strip()
 # splitter_audio_path = input("Enter the path of the splitter audio file: ").strip()
 
-source_directory = "/Users/hamzafouad/my_workspace/personal/audios/hoz_01_01"
-destination_directory = "/Users/hamzafouad/my_workspace/personal/audios/hoz_01_01_memory_finalized"
+source_directory = "/Users/hamzafouad/my_workspace/personal/audios/medo_memory_01_01_2026"
+destination_directory = "/Users/hamzafouad/my_workspace/personal/audios/medo_memory_01_01_2026_finalized"
 splitter_audio_path = "/Users/hamzafouad/my_workspace/personal/patience_reward_ayah.mp3"
 
-collect_audios(source_directory, destination_directory, splitter_audio_path, start_counter=1111)
+if __name__ == "__main__":
+    try:
+        print("Starting audio collection process...")
+        csv_file_path = collect_audios(source_directory, destination_directory, splitter_audio_path, start_counter=1111)
+        print("Audio collection completed successfully!")
+        
+        # Send Telegram notification
+        message = (
+            f"✅ Finalization Complete!\n\n"
+            f"📁 Source: {os.path.basename(source_directory)}\n"
+            f"📂 Destination: {os.path.basename(destination_directory)}\n"
+            f"📊 CSV file generated successfully.\n"
+            f"📎 See attached CSV for details."
+        )
+        
+        success = send_telegram_notification(message, csv_file_path)
+        if success:
+            print("Telegram notification sent successfully!")
+        else:
+            print("Warning: Failed to send Telegram notification. Check your bot token and chat ID.")
+            
+    except Exception as e:
+        error_message = f"❌ Error during finalization: {str(e)}"
+        print(error_message)
+        
+        # Try to send error notification
+        try:
+            send_telegram_notification(error_message)
+        except Exception as notification_error:
+            logger.error(f"Failed to send error notification to Telegram: {notification_error}")
+        
+        raise

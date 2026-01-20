@@ -162,10 +162,16 @@ python files/rename_files.py
 ### Utility Scripts
 
 #### `finalize.py`
-Finalization script for organizing and processing files.
+Finalization script for organizing and processing files. Sends completion notifications to Telegram with the generated CSV file.
 ```bash
 python finalize.py
 ```
+
+**Features:**
+- Collects and organizes audio files from subdirectories
+- Generates a summary CSV file with processing details
+- Automatically sends completion notification to Telegram channel/chat
+- Attaches the CSV file to the Telegram message
 
 ## 🔐 Environment Variables
 
@@ -174,6 +180,19 @@ Create a `.env` file in the root directory with the following variables:
 ```env
 # OpenAI API Configuration (required for filename_translation_script.py)
 OPENAI_API_KEY=your-openai-api-key-here
+
+# Telegram Bot Configuration (required for finalize.py notifications)
+# Get your bot token from @BotFather on Telegram
+TELEGRAM_BOT_TOKEN=your-telegram-bot-token-here
+
+# Telegram Chat/Channel ID
+# For personal chats: Send a message to your bot, then visit:
+# https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates
+# The chat id will be in the response (usually a number like -1001234567890 for channels, 
+# or a positive number for personal chats)
+# For channels: Add bot as admin, then use the channel username with @ prefix 
+# (e.g., @your_channel) or the channel ID (usually negative number)
+TELEGRAM_CHAT_ID=your-telegram-chat-or-channel-id-here
 ```
 
 **Note:** Never commit your `.env` file to version control. The `.env.example` file serves as a template.
@@ -184,6 +203,7 @@ All required Python packages are listed in `requirements.txt`:
 
 - `openai` - OpenAI API client (for filename translation)
 - `python-dotenv` - Load environment variables from `.env` file
+- `python-telegram-bot` - Telegram bot API client (for finalize.py notifications)
 
 ## 🔧 Troubleshooting
 
@@ -205,3 +225,33 @@ All required Python packages are listed in `requirements.txt`:
    - Check your internet connection
 
 4. **Permission errors**: Some scripts may require write permissions. Run with appropriate permissions if needed.
+
+5. **Telegram bot errors**: 
+   - Verify your `TELEGRAM_BOT_TOKEN` is correctly set in `.env`
+   - Ensure your `TELEGRAM_CHAT_ID` is correct (use channel ID for channels, chat ID for personal chats)
+   - For channels: Make sure your bot is added as an administrator
+   - Test your bot token: Visit `https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getMe`
+
+### Setting Up Telegram Bot for Notifications
+
+1. **Create a Telegram Bot:**
+   - Open Telegram and search for `@BotFather`
+   - Send `/newbot` and follow the instructions
+   - Copy the bot token provided by BotFather
+
+2. **Get Chat/Channel ID:**
+   - For personal chats: Send a message to your bot, then visit:
+     ```
+     https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates
+     ```
+     Look for `"chat":{"id":...}` in the response
+   
+   - For channels:
+     - Add your bot as an administrator to the channel
+     - Send a test message in the channel
+     - Use the same `getUpdates` URL to find the channel ID (usually a negative number like `-1001234567890`)
+     - Alternatively, use the channel username with `@` prefix (e.g., `@your_channel`)
+
+3. **Configure Environment Variables:**
+   - Add `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` to your `.env` file
+   - Restart your script after updating `.env`
