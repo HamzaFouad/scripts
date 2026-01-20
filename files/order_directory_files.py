@@ -1,9 +1,13 @@
 import os
 
-def rename_files_with_new_order(directory):
+def rename_files_with_new_order(directory, order='asc'):
 
     # Get list of files in the directory and sort them to ensure order
     files = sorted(os.listdir(directory))
+    
+    # Reverse the order if descending is requested
+    if order == 'desc':
+        files = list(reversed(files))
 
     # Initialize a counter for file numbering
     counter = 1111
@@ -28,5 +32,11 @@ def rename_files_with_new_order(directory):
 
 # Example usage:
 directory_path = input("Enter the directory path: ")
+order = input("Enter the order (asc/desc): ").strip().lower()
 
-rename_files_with_new_order(directory_path)
+# Validate order input
+if order not in ['asc', 'desc']:
+    print("Invalid order. Using 'asc' as default.")
+    order = 'asc'
+
+rename_files_with_new_order(directory_path, order)
