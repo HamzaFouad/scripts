@@ -93,7 +93,41 @@ def add_splitter_audio(destination_dir, splitter_audio_path, counter):
     print(f"Added splitter audio: {splitter_audio_path} as {destination_path}")
     return counter + 1
 
-def collect_audios(source_parent_dir, destination_dir, splitter_audio_path, start_counter=1111):
+def get_splitter_files(splitter_source):
+    """
+    Returns a sorted list of splitter audio files. Accepts either a directory
+    (all .mp3 files inside it) or a single file path (a one-item list).
+    """
+    if os.path.isdir(splitter_source):
+        return sorted(
+            os.path.join(splitter_source, f)
+            for f in os.listdir(splitter_source)
+            if os.path.isfile(os.path.join(splitter_source, f)) and f.lower().endswith(".mp3")
+        )
+    return [splitter_source]
+
+def get_splitter_for_playlist(splitters, playlist_index):
+    """
+    Picks the splitter file for the given (0-based) playlist index, using each
+    splitter once per pass through the list. Once every splitter has been used
+    and playlists remain, the list is reused, but each new pass starts one
+    position further along than the previous pass (e.g. the second pass starts
+    from the splitter that follows the first playlist's splitter).
+
+    Args:
+        splitters (list[str]): Sorted list of splitter audio file paths.
+        playlist_index (int): 0-based index of the playlist being finished.
+
+    Returns:
+        str: Path to the splitter audio file to use.
+    """
+    n = len(splitters)
+    cycle_number = playlist_index // n
+    position_in_cycle = playlist_index % n
+    effective_index = (position_in_cycle + cycle_number) % n
+    return splitters[effective_index]
+
+def collect_audios(source_parent_dir, destination_dir, splitter_source, start_counter=1111):
     """
     Collects all .mp3 files from all subdirectories of a given parent directory,
     modifies filenames to include a prefix based on the directory name, and copies 
@@ -103,14 +137,18 @@ def collect_audios(source_parent_dir, destination_dir, splitter_audio_path, star
     Args:
         source_parent_dir (str): Path to the parent directory containing subdirectories with audio files.
         destination_dir (str): Path to the directory where all audio files will be copied.
+        splitter_source (str): Path to a splitter audio file, or a directory of splitter audio
+            files. When a directory is given, one splitter is added after each playlist,
+            cycling through the files (see get_splitter_for_playlist).
     """
     ensure_directory_exists(destination_dir)
+    splitters = get_splitter_files(splitter_source)
     csv_data = []
     counter = start_counter
     current_jac_order_val = 1
     splitter_numbers = []
+    playlist_index = 0
 
-    
     # Sort directories before processing
     subdirs = sorted([os.path.join(source_parent_dir, d) for d in os.listdir(source_parent_dir) if os.path.isdir(os.path.join(source_parent_dir, d))])
 
@@ -139,17 +177,20 @@ def collect_audios(source_parent_dir, destination_dir, splitter_audio_path, star
 
         if start_laptop_order is not None:
             dir_specific_end_jac_order = current_jac_order_val - 1
+            splitter_path = get_splitter_for_playlist(splitters, playlist_index)
             csv_data.append([
                 dir_name,
                 start_laptop_order,
                 end_laptop_order,
                 dir_specific_start_jac_order,
                 dir_specific_end_jac_order,
+                os.path.basename(splitter_path),
             ])
 
             # Add splitter audio after processing the current playlist
             splitter_numbers.append(counter)
-            counter = add_splitter_audio(destination_dir, splitter_audio_path, counter)
+            counter = add_splitter_audio(destination_dir, splitter_path, counter)
+            playlist_index += 1
 
     # Write CSV data
     destination_dir_name = os.path.basename(destination_dir)
@@ -157,7 +198,7 @@ def collect_audios(source_parent_dir, destination_dir, splitter_audio_path, star
     csv_file_path = os.path.join(source_parent_dir, csv_filename)
     with open(csv_file_path, mode="w", newline="", encoding="utf-8") as csv_file:
         writer = csv.writer(csv_file)
-        writer.writerow(["directoryname", "start_laptop_order", "end_laptop_order", "start_jac_order", "end_jac_order"])
+        writer.writerow(["directoryname", "start_laptop_order", "end_laptop_order", "start_jac_order", "end_jac_order", "splitter_used"])
         writer.writerows(csv_data)
         # Add splitter numbers at the end
         writer.writerow([])  # Empty row for spacing
@@ -170,14 +211,14 @@ def collect_audios(source_parent_dir, destination_dir, splitter_audio_path, star
 # destination_directory = input("Enter the path of the destination directory: ").strip()
 # splitter_audio_path = input("Enter the path of the splitter audio file: ").strip()
 
-source_directory = "/Users/hamzafouad/my_workspace/personal/audios/medo_memory_01_01_2026"
-destination_directory = "/Users/hamzafouad/my_workspace/personal/audios/medo_memory_01_01_2026_finalized"
-splitter_audio_path = "/Users/hamzafouad/my_workspace/personal/patience_reward_ayah.mp3"
+source_directory = "/Users/hamzafouad/my_workspace/personal/audios/m1"
+destination_directory = "/Users/hamzafouad/my_workspace/personal/audios/m1_finalized"
+splitter_source = "/Users/hamzafouad/my_workspace/personal/audios/splitters"
 
 if __name__ == "__main__":
     try:
         print("Starting audio collection process...")
-        csv_file_path = collect_audios(source_directory, destination_directory, splitter_audio_path, start_counter=1111)
+        csv_file_path = collect_audios(source_directory, destination_directory, splitter_source, start_counter=1111)
         print("Audio collection completed successfully!")
         
         # Send Telegram notification
