@@ -65,6 +65,20 @@ def handle_file_name_conflict(destination_path):
         counter += 1
     return destination_path
 
+def already_copied(source_path, destination_path):
+    """
+    True when destination_path is already a complete copy of source_path, so a rerun
+    can resume where a previous run stopped (e.g. after running out of disk space).
+    A destination of a different size is treated as incomplete and removed, so the
+    caller copies it again.
+    """
+    if not os.path.exists(destination_path):
+        return False
+    if os.path.getsize(destination_path) == os.path.getsize(source_path):
+        return True
+    os.remove(destination_path)
+    return False
+
 def copy_audio_file(source_path, destination_dir, prefix, counter):
     """
     Copies an audio file to the destination directory with a modified name.
@@ -80,7 +94,9 @@ def copy_audio_file(source_path, destination_dir, prefix, counter):
     # new_name = f"{counter}_{prefix}_{clean_name}{ext}"
     new_name = f"{counter}{ext}"
     destination_path = os.path.join(destination_dir, new_name)
-    destination_path = handle_file_name_conflict(destination_path)
+    if already_copied(source_path, destination_path):
+        print(f"Skipped (already copied) {destination_path}")
+        return
     shutil.copy2(source_path, destination_path)
     print(f"Copied {source_path} to {destination_path}")
 
@@ -88,7 +104,9 @@ def add_splitter_audio(destination_dir, splitter_audio_path, counter):
     _, ext = os.path.splitext(splitter_audio_path)
     new_name = f"{counter}{ext}"
     destination_path = os.path.join(destination_dir, new_name)
-    destination_path = handle_file_name_conflict(destination_path)
+    if already_copied(splitter_audio_path, destination_path):
+        print(f"Skipped (already copied) splitter {destination_path}")
+        return counter + 1
     shutil.copy2(splitter_audio_path, destination_path)
     print(f"Added splitter audio: {splitter_audio_path} as {destination_path}")
     return counter + 1
@@ -211,8 +229,8 @@ def collect_audios(source_parent_dir, destination_dir, splitter_source, start_co
 # destination_directory = input("Enter the path of the destination directory: ").strip()
 # splitter_audio_path = input("Enter the path of the splitter audio file: ").strip()
 
-source_directory = "/Users/hamzafouad/my_workspace/personal/audios/m1"
-destination_directory = "/Users/hamzafouad/my_workspace/personal/audios/m1_finalized"
+source_directory = "/Users/hamzafouad/my_workspace/personal/audios/ayman_memory"
+destination_directory = "/Users/hamzafouad/my_workspace/personal/audios/ayman_memory_finalized"
 splitter_source = "/Users/hamzafouad/my_workspace/personal/audios/splitters"
 
 if __name__ == "__main__":
